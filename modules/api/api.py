@@ -63,6 +63,14 @@ def decode_base64_to_image(encoding):
     except Exception as err:
         raise HTTPException(status_code=500, detail="Invalid encoded image")
 
+def is_pil_image(obj):
+    return isinstance(obj, Image.Image)
+
+def encode_svg_to_base64(svg_path):
+    with open(svg_path, 'rb') as svg_file:
+        svg_data = svg_file.read()
+    return base64.b64encode(svg_data)
+
 def encode_pil_to_base64(image):
     with io.BytesIO() as output_bytes:
 
@@ -319,6 +327,14 @@ class Api:
             shared.state.end()
 
         b64images = list(map(encode_pil_to_base64, processed.images)) if send_images else []
+        for img in processed.images:
+            if isinstance(img, list) and len(img) == 2:
+                if img[1].lower() == 'svg':
+                    b64images.append(encode_svg_to_base64(img[0]))
+                elif is_pil_image(img[0]):
+                    b64images.append(encode_pil_to_base64(img[0]))
+            elif is_pil_image(img):
+                b64images.append(encode_pil_to_base64(img))
 
         return TextToImageResponse(images=b64images, parameters=vars(txt2imgreq), info=processed.js())
 
